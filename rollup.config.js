@@ -6,6 +6,7 @@ export default {
     'fs',
     'vite',
     'debug',
+    '@rollup/pluginutils',
   ],
   input: [
     'src/index.js',

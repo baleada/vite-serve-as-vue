@@ -3,22 +3,25 @@
 
 import { existsSync } from 'fs'
 import { cachedRead } from 'vite'
+import { createFilter } from '@rollup/pluginutils'
 import debugFactory from 'debug'
 
 const debug = debugFactory('vite-serve-as-vue:serve'),
       debugHmr = debugFactory('vite-serve-as-vue:hmr')
 
 export default function getPlugin (required) {
-  const { toVue, extensions: rawExtensions } = required,
-        extensions = resolveExtensions(rawExtensions)
+  const { toVue, include, exclude, test: rawTest } = required,
+        test = resolveTest(include, exclude, rawTest)
 
   return ({ app, watcher, resolver }) => {
     // hot reload .md files as .vue files
     watcher.on('change', async file => {
-      if (extensions.some(extension => file.endsWith(extension))) {
+      const source = await cachedRead(null, file)
+
+      if (test({ source: source.toString(), id: file, createFilter })) {
         debugHmr(`reloading ${file}`)
         const timestamp = Date.now(),
-              sfc = await getSfc(null, file, toVue)
+              sfc = await toVue({ source: source.toString(), id: file })
 
         // reload the content component
         watcher.handleVueReload(file, timestamp, sfc)
@@ -28,17 +31,20 @@ export default function getPlugin (required) {
     // inject Koa middleware
     app.use(async (ctx, next) => {
       // handle source -> vue transforms
-      if (extensions.some(extension => ctx.path.endsWith(extension))) {
-        const file = resolver.requestToFile(ctx.path)
+      const file = resolver.requestToFile(ctx.path)
+
+      if (!existsSync(file)) {
+        return next()
+      }
+
+      const source = await cachedRead(ctx, file)
+      
+      if (test({ source: source.toString(), id: file, createFilter })) {
         debug(`loading ${file}`)
 
-        if (!existsSync(file)) {
-          return next()
-        }
+        ctx.body = await toVue({ source: source.toString(), id: file })
 
-        ctx.body = await getSfc(ctx, file, toVue)
-
-        // let vite know this is supposed to be treated as vue file
+        // let vite know this is supposed to be treated as vue single file component
         ctx.vue = true
 
         await next()
@@ -51,11 +57,8 @@ export default function getPlugin (required) {
   }
 }
 
-function resolveExtensions (rawExtensions) {
-  return typeof rawExtensions === 'string' ? [rawExtensions] : rawExtensions
-}
-
-async function getSfc (ctx, file, toVue) {
-  const source = await cachedRead(ctx, file)
-  return toVue({ source: source.toString() })
+function resolveTest (include, exclude, test) {
+  return typeof test === 'function'
+    ? test
+    : ({ id, createFilter }) => createFilter(include, exclude)(id)
 }
