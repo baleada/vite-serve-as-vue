@@ -1,6 +1,6 @@
 {
   "name": "@baleada/vite-serve-as-vue",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Koa middleware that serves files in a Vite app as if they were Vue components",
   "main": "lib/index.js",
   "module": "lib/index.esm.js",
