@@ -1,7 +1,7 @@
 // Adapted from Vitepress https://github.com/vuejs/vitepress/blob/master/src/node/server.ts
 // And from Vite built-in server plugins: https://github.com/vitejs/vite/tree/d50e2e4b04d5aef67f0156c07e353f7128ad2738/src/node/server
 
-import { existsSync } from 'fs'
+import { existsSync, lstatSync } from 'fs'
 import { cachedRead } from 'vite'
 import { createFilter } from '@rollup/pluginutils'
 import debugFactory from 'debug'
@@ -30,10 +30,10 @@ export default function getPlugin (required) {
 
     // inject Koa middleware
     app.use(async (ctx, next) => {
-      // handle source -> vue transforms
       const file = resolver.requestToFile(ctx.path)
-
-      if (!existsSync(file)) {
+      
+      // Guard against files that don't exist and directories
+      if (!existsSync(file) || !isFileSync(file)) {
         return next()
       }
 
@@ -61,4 +61,8 @@ function resolveTest (include, exclude, test) {
   return typeof test === 'function'
     ? test
     : ({ id, createFilter }) => createFilter(include, exclude)(id)
+}
+
+function isFileSync (path) {
+  return lstatSync(path).isFile()
 }
