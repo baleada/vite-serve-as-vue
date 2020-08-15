@@ -1,7 +1,7 @@
 // Adapted from Vitepress https://github.com/vuejs/vitepress/blob/master/src/node/server.ts
 // And from Vite built-in server plugins: https://github.com/vitejs/vite/tree/d50e2e4b04d5aef67f0156c07e353f7128ad2738/src/node/server
 
-import { existsSync, lstatSync } from 'fs'
+import { existsSync, statSync } from 'fs'
 import { cachedRead } from 'vite'
 import { createFilter } from '@rollup/pluginutils'
 import debugFactory from 'debug'
@@ -64,5 +64,5 @@ function resolveTest (include, exclude, test) {
 }
 
 function isFileSync (path) {
-  return lstatSync(path).isFile()
+  return statSync(path).isFile()
 }
